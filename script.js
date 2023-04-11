@@ -3,6 +3,9 @@ const bg_canvas = document.getElementById("bgCanvas");
 const context = canvas.getContext("2d");
 const bg_context = bg_canvas.getContext("2d");
 const download_canvas = document.createElement('canvas');
+const canvasButton = document.getElementById("canvasButton");
+const canvasMoveScale = document.getElementById("canvasMoveScale");
+const moveScaleImg = document.getElementById("moveScaleImg");
 
 const undoButton = document.getElementById("undo");
 const redoButton = document.getElementById("redo");
@@ -95,6 +98,7 @@ let previousDistance;
 
 let isMobile = false;
 let colorOp = 1;
+let pinchPan = 0;
 
 function init() {
   if ("ontouchstart" in document.documentElement) { //is mobile device
@@ -103,6 +107,7 @@ function init() {
     bg_canvas.style.right = "2vw";
     document.getElementById("container-v").style.left = "0px";
     alertWindow.style.left = "90vw";
+    canvasButton.style.left = "92vw";
 
     canvas.addEventListener("touchstart", (e) => {
       touches = e.touches.length;
@@ -166,6 +171,7 @@ function init() {
   else { //Computer
     canvas.style.left = "2vw";
     bg_canvas.style.left = "2vw";
+    canvasButton.hidden = true;
 
     canvas.addEventListener("mousedown", onPointerDown);
     canvas.addEventListener("mouseup", onPointerUp);
@@ -220,6 +226,8 @@ function init() {
       }
     });
   }
+
+  canvasMoveScale.addEventListener("click", switchZoomPan);
 
   undoButton.addEventListener("click", (e) => { undo(); manageVPButtons(-1); });
   redoButton.addEventListener("click", (e) => { redo(); manageVPButtons(-1); });
@@ -584,33 +592,35 @@ function onLineFinished(line) {
 }
 
 function handlePinchPan(e) {
-  let t1 = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-  let t2 = { x: e.changedTouches[1].clientX, y: e.changedTouches[1].clientY };
-  let currentDistance = Math.sqrt((t1.x - t2.x) ** 2 + (t1.y - t2.y) ** 2);
+  if (pinchPan == 0) {
+    let t1 = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    let t2 = { x: e.changedTouches[1].clientX, y: e.changedTouches[1].clientY };
+    let currentDistance = Math.sqrt((t1.x - t2.x) ** 2 + (t1.y - t2.y) ** 2);
 
-  if (e.type == "touchstart") {
-    previousDistance = currentDistance;
-    dragStart.x = (e.changedTouches[1].clientX - offsetX) / cameraZoom - cameraOffset.x;
-    dragStart.y = (e.changedTouches[1].clientY - offsetY) / cameraZoom - cameraOffset.y;
-    return;
-  }
-
-  previousDistance = currentDistance;
-  if (initialPinchDistance == null) {
-    initialPinchDistance = currentDistance;
+    if (e.type == "touchstart") {
+      previousDistance = currentDistance;
+    }
+    else {
+      previousDistance = currentDistance;
+      if (initialPinchDistance == null) {
+        initialPinchDistance = currentDistance;
+      }
+      else {
+        adjustZoom(null, currentDistance / initialPinchDistance);
+      }
+    }
   }
   else {
-    adjustZoom(null, currentDistance / initialPinchDistance);
+    if (e.type == "touchstart") {
+      dragStart.x = e.changedTouches[1].clientX - offsetX  - cameraOffset.x;
+      dragStart.y = e.changedTouches[1].clientY - offsetY  - cameraOffset.y;
+    }
+    else {
+      cameraOffset.x = e.changedTouches[1].clientX - offsetX - dragStart.x;
+      cameraOffset.y = e.changedTouches[1].clientY - offsetY  - dragStart.y;
+    }
   }
 
-  cameraOffset.x = (e.changedTouches[1].clientX - offsetX) / cameraZoom - dragStart.x;
-  cameraOffset.y = (e.changedTouches[1].clientY - offsetY) / cameraZoom - dragStart.y;
-
-  cameraOffset.x = Math.min(cameraOffset.x, canvas.width);
-  cameraOffset.x = Math.max(cameraOffset.x, 0);
-
-  cameraOffset.y = Math.min(cameraOffset.y, canvas.height);
-  cameraOffset.y = Math.max(cameraOffset.y, 0);
 }
 
 function adjustZoom(zoomAmount, zoomFactor) {
@@ -1207,6 +1217,7 @@ function changeSettings(e) {
         document.getElementById("container-v").style.left = "0px";
         document.getElementById("container-v").style.right = "auto";
         alertWindow.style.left = "90vw";
+        canvasButton.style.left = "92vw";
       }
       else {
         canvas.style.left = "2vw";
@@ -1227,6 +1238,7 @@ function changeSettings(e) {
         document.getElementById("container-v").style.right = "0px";
         document.getElementById("container-v").style.left = "auto";
         alertWindow.style.left = "79vw";
+        canvasButton.style.left = "81vw";
       }
       else {
         canvas.style.right = "2vw";
@@ -1252,5 +1264,16 @@ function changeSettings(e) {
       break;
   }
   manageVPButtons(-1);
+}
+
+function switchZoomPan(e) {
+  if (pinchPan == 0) {
+    moveScaleImg.src = "./images/pan.png";
+    pinchPan = 1;
+  }
+  else {
+    moveScaleImg.src = "./images/pinch.png";
+    pinchPan = 0;
+  }
 }
 

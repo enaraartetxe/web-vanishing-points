@@ -12,8 +12,7 @@ body {
 
 #canvas,
 #bgCanvas {
-  position: absolute;
-  
+  position: absolute; 
   top: 10vh;
   outline: none;
 }
@@ -172,4 +171,18 @@ body {
   border: none;
   border-radius: 0px;
   opacity: 0;
+}
+
+.canvas-button{
+  position: absolute; 
+  width:8vw;
+  height:5vw;
+  bottom:5vh;
+  left: 81vw;
+  border: none;
+  border-radius: 0px;
+}
+
+#move {
+  box-shadow: none !important;
 }
