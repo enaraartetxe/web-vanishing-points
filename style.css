@@ -1,0 +1,175 @@
+html,
+body {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-image: url("./images/bg.jpg");
+  touch-action: none;
+  /*PREVENT IPAD ZOOMING ON THE WEB*/
+}
+
+#canvas,
+#bgCanvas {
+  position: absolute;
+  
+  top: 10vh;
+  outline: none;
+}
+
+#canvas:active {
+  border: none;
+}
+
+#bgCanvas {
+  background-color: white;
+}
+
+.uicontainer-landscape {
+  position: absolute;
+  width: 98vw;
+  top: 0;
+  left: 2vw;
+  height: 10vh;
+}
+
+.uicontainer-portrait {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  -ms-transform: translateY(-50%);
+  transform: translateY(-50%);
+  width: 13vw;
+}
+
+.btn-group {
+  height: 5vh;
+  top: 50%;
+  -ms-transform: translateY(-50%);
+  transform: translateY(-50%);
+}
+
+.btn-group-vertical {
+  height: 100%;
+  width: 10vw;
+  left: 50%;
+  top: 5vh;
+  -ms-transform: translateX(-50%);
+  transform: translateX(-50%);
+}
+
+.btn-group2 {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  overflow: auto;
+}
+
+.btn-group>.btn {
+  margin: 0 20px 0 0;
+}
+
+
+.btn-group-vertical>.btn {
+  margin: 10px 0 10px 0;
+  box-shadow: none !important;
+}
+
+.btn-group2>.btn {
+  margin: 0 0 10px 0;
+  width: 4.8vw;
+}
+
+#undo {
+  background-color: #965890;
+  border-color: #965890;
+}
+
+#redo {
+  background-color: #965890;
+  border-color: #965890;
+}
+
+#loadImg {
+  display: none;
+}
+
+#uploadImg {
+  cursor: pointer;
+  background-color: #198b92;
+  border-color: #198b92;
+}
+
+#downloadGrid {
+  background-color: #19a419;
+  border-color: #19a419;
+}
+
+#clearCanvas {
+  background-color: #be2525;
+  border-color: #be2525;
+}
+
+#settings {
+  background-color: #415d7e;
+  border-color: #415d7e;
+}
+
+#info {
+  background-color: #3b82cd;
+  border-color: #3b82cd;
+}
+
+#createVP {
+  background-color: #e3b911;
+  border-color: #e3b911;
+}
+
+#less {
+  background-color: #00945e;
+  border-color: #00945e;
+}
+
+#more {
+  background-color: #00945e;
+  border-color: #00945e;
+}
+
+#deleteVP {
+  background-color: #be2525;
+  border-color: #be2525;
+}
+
+
+.icon {
+  height: 3.5vh;
+  margin: 0 2px 2px 0;
+}
+.icon_big {
+  height: 4.5vh;
+}
+
+.vp {
+  height: 6.5vh;
+}
+
+.separator {
+  min-width: 10vw;
+}
+
+#alert{
+  position: absolute;
+  width:8vw;
+  height:5vw;
+  top:10vh;
+  left: 79vw;
+  color: white;
+  background-color: #6c90b8aa;
+  font-size: 1.5em;
+  font-weight: bold;
+  text-align: center;
+  border: none;
+  border-radius: 0px;
+  opacity: 0;
+}
