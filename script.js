@@ -107,9 +107,9 @@ function init() {
     bg_canvas.style.right = "2vw";
     document.getElementById("container-v").style.left = "0px";
     alertWindow.style.left = "90vw";
-    canvasButton.style.left = "90vw";
+    canvasButton.style.left = "92vw";
 
-
+    
     canvas.addEventListener("touchstart", (e) => {
       touches = e.touches.length;
       if (touches > 1)
