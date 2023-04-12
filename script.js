@@ -3,7 +3,7 @@ const bg_canvas = document.getElementById("bgCanvas");
 const context = canvas.getContext("2d");
 const bg_context = bg_canvas.getContext("2d");
 const download_canvas = document.createElement('canvas');
-const canvasButton = document.getElementById("canvasButton");
+
 const canvasMoveScale = document.getElementById("canvasMoveScale");
 const moveScaleImg = document.getElementById("moveScaleImg");
 
@@ -20,7 +20,6 @@ const settings3 = document.getElementById("ifaceColor");
 const settings4 = document.getElementById("ifaceNeutral");
 const settings5 = document.getElementById("colors1");
 const settings6 = document.getElementById("colors2");
-
 
 const createVPButton = document.getElementById("createVP");
 
@@ -46,6 +45,7 @@ const STATE = {
   SecondLine: 3,
   VP: 4,
 }
+
 let state = STATE.FirstDottedLine;
 let currentVP = 0; //when creating them
 let selectedVP = -1; //when manipulating them
@@ -73,7 +73,10 @@ let secondLine;
 let vanishingPoints = [];
 let horizonLine;
 
-let cameraOffset = { x: window.innerWidth * 0.85 / 2, y: window.innerHeight * 0.85 / 2 }
+let aspectRatioWidth = 0.85; //possibly change them in the future to adapt for mobile phones
+let asepctRatioHeight = 0.85;
+
+let cameraOffset = { x: window.innerWidth * aspectRatioWidth / 2, y: window.innerHeight * asepctRatioHeight / 2 }
 let cameraZoom = 1;
 let MAX_ZOOM = 20;
 let MIN_ZOOM = 0.05;
@@ -103,13 +106,8 @@ let pinchPan = 0;
 function init() {
   if ("ontouchstart" in document.documentElement) { //is mobile device
     isMobile = true;
-    canvas.style.right = "2vw";
-    bg_canvas.style.right = "2vw";
-    document.getElementById("container-v").style.left = "0px";
-    alertWindow.style.left = "90vw";
-    canvasButton.style.left = "92vw";
+    changeToolBarStyle(true, true);
 
-    
     canvas.addEventListener("touchstart", (e) => {
       touches = e.touches.length;
       if (touches > 1)
@@ -170,9 +168,7 @@ function init() {
     canvas.addEventListener("touchleave", (e) => { });
   }
   else { //Computer
-    canvas.style.left = "2vw";
-    bg_canvas.style.left = "2vw";
-    canvasButton.hidden = true;
+    changeToolBarStyle(false, true);
 
     canvas.addEventListener("mousedown", onPointerDown);
     canvas.addEventListener("mouseup", onPointerUp);
@@ -227,6 +223,7 @@ function init() {
       }
     });
   }
+
 
   canvasMoveScale.addEventListener("click", switchZoomPan);
 
@@ -286,11 +283,11 @@ function resetButtons() {
 
 function draw() {
 
-  canvas.width = window.innerWidth * 0.85;
-  canvas.height = window.innerHeight * 0.85;
+  canvas.width = window.innerWidth * aspectRatioWidth;
+  canvas.height = window.innerHeight * asepctRatioHeight;
 
-  bg_canvas.width = window.innerWidth * 0.85;
-  bg_canvas.height = window.innerHeight * 0.85;
+  bg_canvas.width = window.innerWidth * aspectRatioWidth;
+  bg_canvas.height = window.innerHeight * asepctRatioHeight;
 
   const m = matrix;
   context.setTransform(1, 0, 0, 1, 0, 0);
@@ -613,12 +610,12 @@ function handlePinchPan(e) {
   }
   else {
     if (e.type == "touchstart") {
-      dragStart.x = e.changedTouches[1].clientX - offsetX  - cameraOffset.x;
-      dragStart.y = e.changedTouches[1].clientY - offsetY  - cameraOffset.y;
+      dragStart.x = e.changedTouches[1].clientX - offsetX - cameraOffset.x;
+      dragStart.y = e.changedTouches[1].clientY - offsetY - cameraOffset.y;
     }
     else {
       cameraOffset.x = e.changedTouches[1].clientX - offsetX - dragStart.x;
-      cameraOffset.y = e.changedTouches[1].clientY - offsetY  - dragStart.y;
+      cameraOffset.y = e.changedTouches[1].clientY - offsetY - dragStart.y;
     }
   }
 
@@ -1207,49 +1204,18 @@ function redo() {
 }
 
 function changeSettings(e) {
-  // console.log(e.target.value);
   switch (e.target.value) {
     case "left":
-      if (isMobile) {
-        canvas.style.right = "2vw";
-        bg_canvas.style.right = "2vw";
-        canvas.style.left = "auto";
-        bg_canvas.style.left = "auto";
-        document.getElementById("container-v").style.left = "0px";
-        document.getElementById("container-v").style.right = "auto";
-        alertWindow.style.left = "90vw";
-        canvasButton.style.left = "92vw";
-      }
-      else {
-        canvas.style.left = "2vw";
-        bg_canvas.style.left = "2vw";
-        canvas.style.right = "auto";
-        bg_canvas.style.right = "auto";
-        document.getElementById("container-v").style.right = "0px";
-        document.getElementById("container-v").style.left = "auto";
-        alertWindow.style.left = "79vw";
-      }
+      if (isMobile)
+        changeToolBarStyle(true, true);
+      else
+        changeToolBarStyle(false, true);
       break;
     case "right":
-      if (isMobile) {
-        canvas.style.left = "2vw";
-        bg_canvas.style.left = "2vw";
-        canvas.style.right = "auto";
-        bg_canvas.style.right = "auto";
-        document.getElementById("container-v").style.right = "0px";
-        document.getElementById("container-v").style.left = "auto";
-        alertWindow.style.left = "79vw";
-        canvasButton.style.left = "81vw";
-      }
-      else {
-        canvas.style.right = "2vw";
-        bg_canvas.style.right = "2vw";
-        canvas.style.left = "auto";
-        bg_canvas.style.left = "auto";
-        document.getElementById("container-v").style.left = "0px";
-        document.getElementById("container-v").style.right = "auto";
-        alertWindow.style.left = "90vw";
-      }
+      if (isMobile)
+        changeToolBarStyle(true, false);
+      else
+        changeToolBarStyle(false, false);
       break;
     case "colorful":
       break;

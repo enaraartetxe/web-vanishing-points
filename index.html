@@ -13,8 +13,9 @@
 
   <title>Puntos de fuga WEB Vanishing Points</title>
 
-  <script type="module" src="./script.js"></script>
   <script type="module" src="./helper.js"></script>
+  <script type="module" src="./script.js"></script>
+  
 </head>
 
 <body id="body">
@@ -31,41 +32,25 @@
   <!-- Toolbar-->
   <div class="uicontainer-landscape d-flex justify-content-between">
     <div class="btn-group" id="btn-group-h" role="group">
-      <button class="btn btn-dark" id="undo" disabled="true">
-        <img class="icon" src="images/undo.png" /> Deshacer
-      </button>
-      <button class="btn btn-dark" id="redo" disabled="true">
-        <img class="icon" src="images/redo.png" /> Rehacer
-      </button>
+      <button class="btn btn-dark" id="undo" disabled="true"></button>
+      <button class="btn btn-dark" id="redo" disabled="true"></button>
     </div>
     <div class="btn-group" id="btn-group-h1" role="group">
       <a id="downloadLink" href="" hidden="true"></a>
-      <label for="loadImg" class="btn btn-info rounded-left" id="uploadImg"><img class="icon"
-          src="images/image.png" /><span style="margin-left: 10px;">Imagen</label>
+      <label for="loadImg" class="btn btn-info rounded-left" id="uploadImg"></label>
       <input type="file" id="loadImg" accept="image/png, image/jpeg" onclick="" />
-      <button class="btn btn-success" id="downloadGrid">
-        <img class="icon" src="images/download.png" /> Descargar
-      </button>
-      <button class="btn btn-danger" id="clearCanvas">
-        <img class="icon" src="images/delete.png" /> Borrar
-      </button>
+      <button class="btn btn-success" id="downloadGrid"></button>
+      <button class="btn btn-danger" id="clearCanvas"></button>
     </div>
-
     <div class="btn-group" id="btn-group-h2" role="group">
-      <button class="btn btn-dark" id="settings" data-toggle="modal" data-target="#settingsModal">
-        <img class="icon" src="images/settings.png" /> Ajustes
-      </button>
-      <button class="btn btn-primary" id="info" data-toggle="modal" data-target="#infoModal">
-        <img class="icon" src="images/info.png" /> Info&nbsp;&nbsp;
-      </button>
+      <button class="btn btn-dark" id="settings" data-toggle="modal" data-target="#settingsModal"></button>
+      <button class="btn btn-primary" id="info" data-toggle="modal" data-target="#infoModal"></button>
     </div>
   </div>
-  <!-- VP create & manipulate-->
+  <!-- create & manipulate VPs-->
   <div class="uicontainer-portrait" id="container-v">
     <div class="btn-group-vertical" id="btn-group-v" role="group">
-      <button class="btn btn-warning" id="createVP">
-        <img class="icon" src="images/vp.png" /><br>Crear Punto de Fuga
-      </button>
+      <button class="btn btn-warning" id="createVP"></button>
       <button class="btn" id="vp1">
         <img class="vp" id="vp1Image" src="./images/1.png" />
       </button>
@@ -86,9 +71,7 @@
           <img class="icon_big" src="images/more.png" />
         </button>
       </div>
-      <button class="btn btn-danger" id="deleteVP">
-        <img class="icon" src="images/delete.png" /> <br>Borrar Punto de Fuga
-      </button>
+      <button class="btn btn-danger" id="deleteVP"></button>
     </div>
   </div>
   <!-- For VP radial lines-->
@@ -98,12 +81,12 @@
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h4 class="modal-title" id="infoModal_title">Información</h4>
+          <h4 class="modal-title" id="infoModal_title"></h4>
         </div>
         <div class="modal-body" id="infoModal_text">
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Entendido</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal" id="infoOkButton"></button>
         </div>
       </div>
     </div>
@@ -114,45 +97,42 @@
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h4 class="modal-title" id="settingsModal_title">Ajustes</h4>
+          <h4 class="modal-title" id="settingsModal_title"></h4>
         </div>
         <div class="modal-body" id="settingsModal_text">
           <p>
-          <div class="form-check form-check-inline">
-            <b>- Barra de herramientas para:&emsp;</b>
+          <div class="form-check form-check-inline" id="check1">
             <input class="form-check-input" type="radio" name="settings1" id="toolsLeft" value="left" checked>
-            <label class="form-check-label" for="toolsLeft">Diestros</label>
+            <label class="form-check-label" for="toolsLeft" id="leftLabel"></label>
           </div>
           <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="settings1" id="toolsRight" value="right">
-            <label class="form-check-label" for="toolsRight">Zurdos</label>
+            <label class="form-check-label" for="toolsRight" id="rightLabel"></label>
           </div>
           </p>
           <p>
-          <div class="form-check form-check-inline" hidden>
-            <b>- Interfaz:&emsp;</b>
+          <div class="form-check form-check-inline" id="check2" hidden>
             <input class="form-check-input" type="radio" name="settings2" id="ifaceColor" value="colorful" checked>
-            <label class="form-check-label" for="ifaceColor">Colorida</label>
+            <label class="form-check-label" for="ifaceColor" id="ifaceColorLabel"></label>
           </div>
           <div class="form-check form-check-inline" hidden>
             <input class="form-check-input" type="radio" name="settings2" id="ifaceNeutral" value="neutral">
-            <label class="form-check-label" for="ifaceNeutral">Neutra</label>
+            <label class="form-check-label" for="ifaceNeutral" id="ifaceNeutralLabel"></label>
           </div>
           </p>
           <p>
-          <div class="form-check form-check-inline">
-            <b>- Líneas:&emsp;</b>
+          <div class="form-check form-check-inline" id="check3">
             <input class="form-check-input" type="radio" name="settings3" id="colors1" value="ryb" checked>
-            <label class="form-check-label" for="colors1">Rosa/Amarillo/Azul</label>
+            <label class="form-check-label" for="colors1" id="colors1Label"></label>
           </div>
           <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="settings3" id="colors2" value="rgb">
-            <label class="form-check-label" for="colors2">Rojo/Verde/Azul</label>
+            <label class="form-check-label" for="colors2" id="colors2Label"></label>
           </div>
           </p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Hecho</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal" id="settingsOkButton"></button>
         </div>
       </div>
     </div>
