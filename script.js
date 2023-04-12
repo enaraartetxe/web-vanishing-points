@@ -923,9 +923,6 @@ function deleteVP(save = true) {
 
 document.addEventListener("DOMContentLoaded", init);
 
-//Code from:
-//https://stackoverflow.com/questions/34597160/html-canvas-mouse-position-after-scale-and-translate/34598847#34598847
-//----------------------------------------------------------------------------
 function createMatrix(x, y, scale, rotate) {
   const m = matrix; // just to make it easier to type and read
   const im = invMatrix; // just to make it easier to type and read
@@ -957,7 +954,7 @@ function toWorld(x, y) {
     y: xx * m[1] + yy * m[3]
   }
 }
-//----------------------------------------------------------------------------
+
 
 let previousActions = [];
 let nextActions = [];
