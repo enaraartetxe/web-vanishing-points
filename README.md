@@ -36,3 +36,8 @@ Try it here -> https://enaraartetxe.github.io/web-vanishing-points/
 - Quick options for both computer (keyboard shortcuts) and tabelt (gestures).
 - Option for right & left-handed.
 - Available in Spanish and English, depending on the browser language.
+
+---
+*A special shoutout to Nineberry & Blindman67 for their answer on how to use the inverse matrix to transform the canvas here ->* https://stackoverflow.com/questions/34597160/html-canvas-mouse-position-after-scale-and-translate/34598847#34598847
+
+*and to Chengarda for the base to zoom and pan on a canvas ->* https://codepen.io/chengarda/pen/wRxoyB?editors=1111
