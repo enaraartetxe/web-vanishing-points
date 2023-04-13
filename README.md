@@ -3,7 +3,9 @@
 
 ![](https://github.com/enaraartetxe/web-vanishing-points/blob/main/images/icon_128x128.png)
 
-Permite crear un grid de perspectiva con hasta tres puntos de fuga para utilizarlo como referencia en dibujo. 
+Permite crear un grid de perspectiva con hasta tres puntos de fuga para utilizarlo como referencia en dibujo.
+
+![](https://github.com/enaraartetxe/web-vanishing-points/blob/main/images/thumb.png)
 
 Pruébalo aquí -> https://enaraartetxe.github.io/web-vanishing-points/
 ### Características
@@ -38,6 +40,6 @@ Try it here -> https://enaraartetxe.github.io/web-vanishing-points/
 - Available in Spanish and English, depending on the browser language.
 
 ---
-*A special shoutout to Nineberry & Blindman67 for their answer on how to use the inverse matrix to transform the canvas here ->* https://stackoverflow.com/questions/34597160/html-canvas-mouse-position-after-scale-and-translate/34598847#34598847
+*A special shoutout to Nineberry & Blindman67 for their answer on how to use the inverse matrix to apply translation and scale on the canvas here ->* https://stackoverflow.com/questions/34597160/html-canvas-mouse-position-after-scale-and-translate/34598847#34598847
 
-*and to Chengarda for the base to zoom and pan on a canvas ->* https://codepen.io/chengarda/pen/wRxoyB?editors=1111
+*and to Chengarda for the base code to zoom and pan ->* https://codepen.io/chengarda/pen/wRxoyB?editors=1111
