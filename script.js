@@ -850,7 +850,10 @@ function manageVPButtons(button) {
         selectedVP = -1;
       }
       else {
-        vp3Image.src = "./images/3_selected.png";
+        if (settings.colors === "pyb")
+          vp3Image.src = "./images/3_selected.png";
+        else
+          vp3Image.src = "./images/3_selected2.png";
         selectedVP = 2;
       }
       break;
