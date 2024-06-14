@@ -549,7 +549,7 @@ function saveSettings() {
  */
 function showCustomizedInterface() {
   changeToolBarStyle(isMobile, settings.hand === "left");
-  colors = settings.colors === "pyb" ? ["HotPink", "Gold", "RoyalBlue"] : ["Red", "Green", "Blue"];
+  colors = settings.colors === "pyb" ? ["deeppink", "gold", "slateblue"] : ["limegreen", "blue", "orangered"];
 }
 
 /**
