@@ -1,3 +1,5 @@
+import { translation } from './helper.js'; // Import the translation function from helper.js
+
 const canvas = document.getElementById("canvas");
 const bg_canvas = document.getElementById("bgCanvas");
 const context = canvas.getContext("2d");
@@ -14,12 +16,12 @@ const loadImgButton = document.getElementById("loadImg");
 const downloadButton = document.getElementById("downloadGrid");
 const clearButton = document.getElementById("clearCanvas");
 
-const settings1 = document.getElementById("toolsLeft");
-const settings2 = document.getElementById("toolsRight");
-const settings3 = document.getElementById("ifaceColor");
-const settings4 = document.getElementById("ifaceNeutral");
-const settings5 = document.getElementById("colors1");
-const settings6 = document.getElementById("colors2");
+const toolsLeft = document.getElementById("toolsLeft");
+const toolsRight = document.getElementById("toolsRight");
+const ifaceColor = document.getElementById("ifaceColor");
+const ifaceNeutral = document.getElementById("ifaceNeutral");
+const colors1 = document.getElementById("colors1");
+const colors2 = document.getElementById("colors2");
 
 const createVPButton = document.getElementById("createVP");
 
@@ -36,6 +38,15 @@ const moreButton = document.getElementById("more");
 const lessButton = document.getElementById("less");
 const alertWindow = document.getElementById("alert");
 const deleteVPButton = document.getElementById("deleteVP");
+
+const maxRadialLines = 360;
+const minRadialLines = 8;
+
+const defaultSettings = {
+  hand: 'left',
+  iface: 'colorful',
+  colors: 'pyb'
+};
 
 const STATE = {
   Init: -1,
@@ -87,187 +98,102 @@ let mouseWorldPos;
 let isDragging = false;
 let dragStart = { x: 0, y: 0 };
 
-let isZooming = false;
 let initialPinchDistance = null;
 let lastZoom = cameraZoom;
 
 let matrix = [1, 0, 0, 1, 0, 0];      // normal matrix
 let invMatrix = [1, 0, 0, 1];   // inverse matrix
 
-let action; //for undo & redo
-
 let timeStart;
-let previousDistance;
 
 let isMobile = false;
-let colorOp = 1;
 let pinchPan = 0;
 
-function init() {
+let previousActions = [];
+let nextActions = [];
+
+let settings;
+
+/********************************
+ ***     INITIALIZATION       ***
+ ********************************/
+
+/**
+ * Initialize the application.
+ */
+document.addEventListener("DOMContentLoaded", () => {
   if ("ontouchstart" in document.documentElement) { //is mobile device
     isMobile = true;
-    changeToolBarStyle(true, true);
+    setupTouchEvents();
 
-    canvas.addEventListener("touchstart", (e) => {
-      touches = e.touches.length;
-      if (touches > 1)
-        e.preventDefault();
-
-      switch (touches) {
-        case 1: //draw
-          onPointerDown(e);
-          break;
-        case 2: //pinch
-          timeStart = Date.now();
-          handlePinchPan(e);
-          break;
-        case 3:
-          if (nextActions.length > 0)
-            redo();
-          break;
-        case 4: //delete
-          deleteScene();
-          break;
-      }
-    });
-    canvas.addEventListener("touchmove", (e) => {
-      if (touches > 1)
-        e.preventDefault();
-      switch (touches) {
-        case 1: //draw
-          onPointerMove(e);
-          break;
-        case 2: //pinch
-          if ((Date.now() - timeStart) > 60)
-            handlePinchPan(e);
-          break;
-      }
-    });
-    canvas.addEventListener("touchend", (e) => {
-      if (touches > 1)
-        e.preventDefault();
-      switch (touches) {
-        case 1: //draw
-          onPointerUp(e);
-          break;
-        case 2: //pinch
-          if ((Date.now() - timeStart) < 60) {
-            if (previousActions.length > 0)
-              undo();
-          }
-          else {
-            initialPinchDistance = null;
-            lastZoom = cameraZoom;
-          }
-          break;
-      }
-      touches = 0;
-    });
-    canvas.addEventListener("touchout", (e) => { });
-    canvas.addEventListener("touchcancel", (e) => { });
-    canvas.addEventListener("touchleave", (e) => { });
   }
   else { //Computer
-    changeToolBarStyle(false, true);
-
-    canvas.addEventListener("mousedown", onPointerDown);
-    canvas.addEventListener("mouseup", onPointerUp);
-    canvas.addEventListener("mousemove", onPointerMove);
-    canvas.addEventListener("mouseleave", onPointerLeave);
-    canvas.addEventListener("wheel", (e) => { adjustZoom(-e.deltaY * SCROLL_SENSITIVITY) });
-
-    document.body.addEventListener("keydown", (e) => {
-      if (e.key == "Enter" && !createVPButton.disabled) {
-        createVP();
-        manageVPButtons(-1);
-      }
-      if (e.key == "Escape" || e.key == "Esc") {
-        if (state == STATE.FirstDottedLine || state == STATE.SecondDottedLine) {
-          isDrawing = false;
-          dottedLine = { x, y };
-        }
-        manageVPButtons(-1);
-        isDragging = false;
-        isMoving = false;
-      }
-      if (e.key == "1" && vanishingPoints.length > 0) {
-        manageVPButtons(0);
-      }
-      if (e.key == "2" && vanishingPoints.length > 1) {
-        manageVPButtons(1);
-      }
-      if (e.key == "3" && vanishingPoints.length > 2) {
-        manageVPButtons(2);
-      }
-      if (e.key == "h" && vanishingPoints.length > 1) {
-        manageVPButtons(3);
-      }
-      if (e.ctrlKey && e.key == "z") {
-        undo();
-      }
-      if (e.ctrlKey && e.key == "y") {
-        redo();
-      }
-      if (e.key == "Backspace" || e.key == "Delete") {
-        deleteScene();
-      }
-      if (e.key == "+") {
-        if (selectedVP > -1 && selectedVP < 3) {
-          more();
-        }
-      }
-      if (e.key == "-") {
-        if (selectedVP > -1 && selectedVP < 3) {
-          less();
-        }
-      }
-    });
+    setupMouseEvents();
   }
+  getLocalSettings();
+  setupEventListeners();
+  resetButtons();
+  state = STATE.Init;
+  draw();
+});
 
+/**
+ * Set up touch event listeners.
+ */
+function setupTouchEvents() {
+  canvas.addEventListener("touchstart", handleTouchStart);
+  canvas.addEventListener("touchmove", handleTouchMove);
+  canvas.addEventListener("touchend", handleTouchEnd);
+}
 
+/**
+ * Set up mouse event listeners.
+ */
+function setupMouseEvents() {
+  canvas.addEventListener("mousedown", onPointerDown);
+  canvas.addEventListener("mouseup", onPointerUp);
+  canvas.addEventListener("mousemove", onPointerMove);
+  canvas.addEventListener("mouseleave", onPointerLeave);
+  canvas.addEventListener("wheel", (e) => { adjustZoom(-e.deltaY * SCROLL_SENSITIVITY); });
+
+  document.body.addEventListener("keydown", handleKeyDown);
+}
+
+/**
+* Set up general event listeners.
+*/
+function setupEventListeners() {
   canvasMoveScale.addEventListener("click", switchZoomPan);
-
   undoButton.addEventListener("click", (e) => { undo(); manageVPButtons(-1); });
   redoButton.addEventListener("click", (e) => { redo(); manageVPButtons(-1); });
   downloadButton.addEventListener("click", (e) => { downloadGrid(); manageVPButtons(-1); });
   clearButton.addEventListener("click", (e) => { deleteScene(); manageVPButtons(-1); });
 
-  settings1.addEventListener("change", changeSettings);
-  settings2.addEventListener("change", changeSettings);
-  settings3.addEventListener("change", changeSettings);
-  settings4.addEventListener("change", changeSettings);
-  settings5.addEventListener("change", changeSettings);
-  settings6.addEventListener("change", changeSettings);
+  toolsLeft.addEventListener("change", changeSettings);
+  toolsRight.addEventListener("change", changeSettings);
+  ifaceColor.addEventListener("change", changeSettings);
+  ifaceNeutral.addEventListener("change", changeSettings);
+  colors1.addEventListener("change", changeSettings);
+  colors2.addEventListener("change", changeSettings);
 
   createVPButton.addEventListener("click", (e) => { createVP(); });
 
-  vp1Button.addEventListener("click", (e) => { manageVPButtons(0) });
-  vp2Button.addEventListener("click", (e) => { manageVPButtons(1) });
-  vp3Button.addEventListener("click", (e) => { manageVPButtons(2) });
-  horizonButton.addEventListener("click", (e) => { manageVPButtons(3) });
+  vp1Button.addEventListener("click", (e) => { manageVPButtons(0); });
+  vp2Button.addEventListener("click", (e) => { manageVPButtons(1); });
+  vp3Button.addEventListener("click", (e) => { manageVPButtons(2); });
+  horizonButton.addEventListener("click", (e) => { manageVPButtons(3); });
 
-  moreButton.addEventListener("click", (e) => {
-    more();
-  });
-  lessButton.addEventListener("click", (e) => {
-    less();
-  });
-  deleteVPButton.addEventListener("click", (e) => { deleteVP() });
+  moreButton.addEventListener("click", (e) => { more(); });
+  lessButton.addEventListener("click", (e) => { less(); });
+  deleteVPButton.addEventListener("click", (e) => { deleteVP(); });
+  document.addEventListener("click", (e) => { if (e.target.id == "body") manageVPButtons(-1); });
 
-  document.addEventListener("click", (e) => {
-    if (e.target.id == "body")
-      manageVPButtons(-1);
-  });
-
-  //BACKGROUND
-  loadImgButton.addEventListener("change", loadBGImage);
-
-  resetButtons();
-
-  state = STATE.Init;
-  draw();
+  loadImgButton.addEventListener("change", loadBGImage); //background
 }
 
+/**
+ * Reset button states.
+ */
 function resetButtons() {
   createVPButton.disabled = true;
   downloadButton.disabled = true;
@@ -281,6 +207,399 @@ function resetButtons() {
 }
 
 
+/********************************
+ ***     EVENT HANDLERS       ***
+ ********************************/
+/**
+ * Handle PointerDown events.
+ */
+function onPointerDown(e) {
+  if (selectedVP != -1 && (e.button == 0 || touches != 0)) //moving a VP
+  {
+    isMoving = true;
+    if (e.button == 0) {
+      if (selectedVP == 3) //horizon line
+      {
+        saveAction({ n: "MoveHorizonS", p1: { x: vanishingPoints[0].x, y: vanishingPoints[0].y }, p2: { x: vanishingPoints[1].x, y: vanishingPoints[1].y } });
+
+        moveX = (getEventLocation(e).x - cameraOffset.x) / cameraZoom;
+        vanishingPoints[0].y = (getEventLocation(e).y - cameraOffset.y) / cameraZoom;
+        vanishingPoints[1].y = (getEventLocation(e).y - cameraOffset.y) / cameraZoom;
+        createHorizonLine();
+      }
+      else {
+        saveAction({ n: "MoveVPS", p1: { x: vanishingPoints[selectedVP].x, y: vanishingPoints[selectedVP].y }, p2: selectedVP });
+
+        vanishingPoints[selectedVP] = { x: (getEventLocation(e).x - cameraOffset.x) / cameraZoom, y: (getEventLocation(e).y - cameraOffset.y) / cameraZoom };
+        if (vanishingPoints.length > 1) createHorizonLine();
+      }
+    }
+    else {
+      if (selectedVP == 3) //horizon line
+      {
+        moveX = (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom;
+        vanishingPoints[0].y = (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom;
+        vanishingPoints[1].y = (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom;
+        createHorizonLine();
+      }
+      else {
+        vanishingPoints[selectedVP] = { x: (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom, y: (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom };
+        if (vanishingPoints.length > 1) createHorizonLine();
+      }
+    }
+
+    return;
+  }
+  else if (vanishingPoints.length == 3 && (e.button == 0 || touches == 1)) { //trying to create a new VP
+    alert(translation("threeVPsAlert"));
+    return;
+  }
+  else if (isDrawing && dottedLine != undefined) //still drawing but the pointer was realeased outside canvas
+  {
+    //don't do anything...
+  }
+  //Drawing
+  else if (e.button == 0) {
+    isDrawing = true;
+    mouseWorldPos = toWorld(getEventLocation(e).x, getEventLocation(e).y);
+    x = mouseWorldPos.x;
+    y = mouseWorldPos.y;
+
+  }
+  else if (touches == 1) { //one finger
+
+    isDrawing = true;
+
+    mouseWorldPos = toWorld(getEventLocation(e).x - offsetX, getEventLocation(e).y - offsetY);
+    x = mouseWorldPos.x;
+    y = mouseWorldPos.y;
+  }
+  else { //Dragging with three fingers or right/middle click
+    isDragging = true;
+    if (touches == 0) {
+      dragStart.x = getEventLocation(e).x / cameraZoom - cameraOffset.x;
+      dragStart.y = getEventLocation(e).y / cameraZoom - cameraOffset.y;
+    }
+    else {
+      dragStart.x = (e.changedTouches[0].clientX - offsetX) / cameraZoom - cameraOffset.x;
+      dragStart.y = (e.changedTouches[0].clientY - offsetY) / cameraZoom - cameraOffset.y;
+    }
+  }
+}
+
+/**
+ * Handle PointerMove events.
+ */
+function onPointerMove(e) {
+  if (isMoving) {
+    if (e.button == 0) {
+      if (selectedVP == 3) //horizon line
+      {
+        const offset = (getEventLocation(e).x - cameraOffset.x) / cameraZoom - moveX;
+
+        vanishingPoints[0].x += offset;
+        vanishingPoints[1].x += offset;
+
+        moveX = (getEventLocation(e).x - cameraOffset.x) / cameraZoom;
+
+        vanishingPoints[0].y = (getEventLocation(e).y - cameraOffset.y) / cameraZoom;
+        vanishingPoints[1].y = (getEventLocation(e).y - cameraOffset.y) / cameraZoom;
+        createHorizonLine();
+      }
+      else {
+        vanishingPoints[selectedVP] = { x: (getEventLocation(e).x - cameraOffset.x) / cameraZoom, y: (getEventLocation(e).y - cameraOffset.y) / cameraZoom };
+        if (vanishingPoints.length > 1) createHorizonLine();
+      }
+    }
+    else {
+      if (selectedVP == 3) //horizon line
+      {
+        const offset = (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom - moveX;
+
+        vanishingPoints[0].x += offset;
+        vanishingPoints[1].x += offset;
+
+        moveX = (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom;
+
+        vanishingPoints[1].y = (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom;
+        vanishingPoints[0].y = (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom;
+        createHorizonLine();
+      }
+      else {
+        vanishingPoints[selectedVP] = { x: (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom, y: (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom };
+        if (vanishingPoints.length > 1) createHorizonLine();
+      }
+    }
+  }
+  else if (isDrawing) {
+    if (e.button == 0) {
+      mouseWorldPos = toWorld(getEventLocation(e).x, getEventLocation(e).y);
+      dottedLine = { x1: x, y1: y, x2: mouseWorldPos.x, y2: mouseWorldPos.y };
+    }
+    else {
+      mouseWorldPos = toWorld(getEventLocation(e).x - offsetX, getEventLocation(e).y - offsetY);
+      dottedLine = { x1: x, y1: y, x2: mouseWorldPos.x, y2: mouseWorldPos.y };
+    }
+
+    switch (state) {
+      case STATE.Init:
+        state = STATE.FirstDottedLine;
+        break;
+      case STATE.FirstLine:
+        state = STATE.SecondDottedLine;
+        break;
+      case STATE.SecondLine: //repaint second line
+        state = STATE.SecondDottedLine;
+        break;
+      case STATE.VP:
+        state = STATE.FirstDottedLine;
+        break;
+    }
+  }
+  else if (isDragging) {
+    if (touches == 0) {
+      cameraOffset.x = getEventLocation(e).x / cameraZoom - dragStart.x;
+      cameraOffset.y = getEventLocation(e).y / cameraZoom - dragStart.y;
+
+      cameraOffset.x = Math.min(cameraOffset.x, canvas.width);
+      cameraOffset.x = Math.max(cameraOffset.x, 0);
+
+      cameraOffset.y = Math.min(cameraOffset.y, canvas.height);
+      cameraOffset.y = Math.max(cameraOffset.y, 0);
+    }
+    else {
+      cameraOffset.x = (e.changedTouches[0].clientX - offsetX) / cameraZoom - dragStart.x;
+      cameraOffset.y = (e.changedTouches[0].clientY - offsetY) / cameraZoom - dragStart.y;
+    }
+  }
+}
+
+/**
+ * Handle PointerUp events.
+ */
+function onPointerUp(e) {
+  if (isMoving) {
+    isMoving = false;
+    if (vanishingPoints.length > 1) createHorizonLine();
+    if (selectedVP == 3) //horizon line
+      saveAction({ n: "MoveHorizon", p1: { x: vanishingPoints[0].x, y: vanishingPoints[0].y }, p2: { x: vanishingPoints[1].x, y: vanishingPoints[1].y } });
+    else
+      saveAction({ n: "MoveVP", p1: { x: vanishingPoints[selectedVP].x, y: vanishingPoints[selectedVP].y }, p2: selectedVP });
+  }
+  else if (isDrawing) {
+    if (e.button == 0) {
+      mouseWorldPos = toWorld(getEventLocation(e).x, getEventLocation(e).y);
+      createLine({ x1: x, y1: y, x2: mouseWorldPos.x, y2: mouseWorldPos.y });
+    }
+    else {
+      mouseWorldPos = toWorld(getEventLocation(e).x - offsetX, getEventLocation(e).y - offsetY);
+      createLine({ x1: x, y1: y, x2: mouseWorldPos.x, y2: mouseWorldPos.y });
+    }
+  }
+  else if (isDragging) {
+    isDragging = false;
+  }
+}
+
+/**
+ * Handle PointerLeave events.
+ */
+function onPointerLeave(e) {
+  isDragging = false;
+  isMoving = false;
+}
+
+/**
+ * Touch Start
+ */
+function handleTouchStart(e) {
+  touches = e.touches.length;
+  if (touches > 1) e.preventDefault();
+
+  switch (touches) {
+    case 1: onPointerDown(e); break;
+    case 2:
+      timeStart = Date.now();
+      handlePinchPan(e);
+      break;
+    case 3:
+      if (nextActions.length > 0) redo();
+      break;
+    case 4: deleteScene(); break;
+  }
+}
+
+/**
+ * Touch Move
+ */
+function handleTouchMove(e) {
+  if (touches > 1) e.preventDefault();
+  switch (touches) {
+    case 1: onPointerMove(e); break;
+    case 2: if ((Date.now() - timeStart) > 60) handlePinchPan(e); break;
+  }
+}
+
+/** 
+ * Touch End
+ */
+function handleTouchEnd(e) {
+  if (touches > 1) e.preventDefault();
+  switch (touches) {
+    case 1: onPointerUp(e); break;
+    case 2:
+      if ((Date.now() - timeStart) < 60) {
+        if (previousActions.length > 0) undo();
+      } else {
+        initialPinchDistance = null;
+        lastZoom = cameraZoom;
+      }
+      break;
+  }
+  touches = 0;
+}
+
+/**
+ * Handle key down events.
+ */
+function handleKeyDown(e) {
+  if (e.key == "Enter" && !createVPButton.disabled) {
+    createVP();
+    manageVPButtons(-1);
+  }
+  if (e.key == "Escape" || e.key == "Esc") {
+    if (state == STATE.FirstDottedLine || state == STATE.SecondDottedLine) {
+      isDrawing = false;
+      dottedLine = { x, y };
+    }
+    manageVPButtons(-1);
+    isDragging = false;
+    isMoving = false;
+  }
+  if (e.key == "1" && vanishingPoints.length > 0) {
+    manageVPButtons(0);
+  }
+  if (e.key == "2" && vanishingPoints.length > 1) {
+    manageVPButtons(1);
+  }
+  if (e.key == "3" && vanishingPoints.length > 2) {
+    manageVPButtons(2);
+  }
+  if (e.key == "h" && vanishingPoints.length > 1) {
+    manageVPButtons(3);
+  }
+  if (e.ctrlKey && e.key == "z") {
+    undo();
+  }
+  if (e.ctrlKey && e.key == "y") {
+    redo();
+  }
+  if (e.key == "Backspace" || e.key == "Delete") {
+    deleteScene();
+  }
+  if (e.key == "+") {
+    if (selectedVP > -1 && selectedVP < 3) {
+      more();
+    }
+  }
+  if (e.key == "-") {
+    if (selectedVP > -1 && selectedVP < 3) {
+      less();
+    }
+  }
+}
+
+/**
+ * Get settings from the local storage
+ */
+function getLocalSettings() {
+  const savedSettings = localStorage.getItem('userSettings');
+  if (savedSettings) {
+    settings = JSON.parse(savedSettings);
+  } else {
+    settings = defaultSettings;
+  }
+
+  updateSettingsButtons(); //Make sure the right radio buttons are checked
+  showCustomizedInterface();
+}
+
+/**
+ * Update the radio buttons
+ */
+function updateSettingsButtons() {
+  toolsLeft.checked = settings.hand === "left";
+  toolsRight.checked = settings.hand === "right";
+  ifaceColor.checked = settings.iface === "colorful";
+  ifaceNeutral.checked = settings.iface === "neutral";
+  colors1.checked = settings.colors === "pyb";
+  colors2.checked = settings.colors === "rgb";
+}
+
+/**
+ * Save settings to local storage
+ */
+function saveSettings() {
+  localStorage.setItem('userSettings', JSON.stringify(settings));
+}
+
+/**
+ * Show updated settings in the webpage
+ */
+function showCustomizedInterface() {
+  changeToolBarStyle(isMobile, settings.hand === "left");
+  colors = settings.colors === "pyb" ? ["HotPink", "Gold", "RoyalBlue"] : ["Red", "Green", "Blue"];
+}
+
+/**
+ * Change settings based on user input.
+ */
+function changeSettings(e) {
+  switch (e.target.value) {
+    case "left":
+      settings.hand = "left";
+      break;
+    case "right":
+      settings.hand = "right";
+      break;
+    case "colorful":
+      settings.iface = "colorful";
+      break;
+    case "neutral":
+      settings.iface = "neutral";
+      break;
+    case "pyb":
+      settings.colors = "pyb";
+      break;
+    case "rgb":
+      settings.colors = "rgb";
+      break;
+  }
+  saveSettings();
+  showCustomizedInterface();
+  manageVPButtons(-1);
+}
+
+/**
+ * Switch between zoom and pan modes.
+ */
+function switchZoomPan(e) {
+  if (pinchPan == 0) {
+    moveScaleImg.src = "./images/pan.png";
+    pinchPan = 1;
+  }
+  else {
+    moveScaleImg.src = "./images/pinch.png";
+    pinchPan = 0;
+  }
+}
+
+/********************************
+ ***     DRAWING FUNCTIONS    ***
+ ********************************/
+/**
+ * Drawing loop.
+ */
 function draw() {
 
   canvas.width = window.innerWidth * aspectRatioWidth;
@@ -333,6 +652,9 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
+/**
+ * Draw the background image on the canvas (inside draw loop).
+ */
 function drawBGImage() {
   const hRatio = bg_canvas.width / bgImage.width;
   const vRatio = bg_canvas.height / bgImage.height;
@@ -342,6 +664,9 @@ function drawBGImage() {
   bg_context.drawImage(bgImage, -canvas.width / 2 + centerX, -canvas.height / 2 + centerY, bgImage.width * ratio, bgImage.height * ratio);
 }
 
+/**
+ * Draw a line on the canvas (inside draw loop).
+ */
 function drawLine(line, lineDash = [], color = colors[currentVP], width = 1) {
   context.beginPath();
   context.strokeStyle = color;
@@ -356,6 +681,9 @@ function drawLine(line, lineDash = [], color = colors[currentVP], width = 1) {
   context.stroke();
 }
 
+/**
+ * Draw a vanishing point with radial lines (inside draw loop)
+ */
 function drawVP(vp) {
   let degs = 0;
   for (let i = 0; i < radialLines[currentVP]; i++) {
@@ -365,199 +693,13 @@ function drawVP(vp) {
   }
 }
 
-function onPointerDown(e) {
-  if (selectedVP != -1 && (e.button == 0 || touches != 0)) //moving a VP
-  {
-    isMoving = true;
-    if (e.button == 0) {
-      if (selectedVP == 3) //horizon line
-      {
-        saveAction({ n: "MoveHorizonS", p1: { x: vanishingPoints[0].x, y: vanishingPoints[0].y }, p2: { x: vanishingPoints[1].x, y: vanishingPoints[1].y } });
-
-        moveX = (getEventLocation(e).x - cameraOffset.x) / cameraZoom;
-        vanishingPoints[0].y = (getEventLocation(e).y - cameraOffset.y) / cameraZoom;
-        vanishingPoints[1].y = (getEventLocation(e).y - cameraOffset.y) / cameraZoom;
-        createHorizonLine();
-      }
-      else {
-        saveAction({ n: "MoveVPS", p1: { x: vanishingPoints[selectedVP].x, y: vanishingPoints[selectedVP].y }, p2: selectedVP });
-
-        vanishingPoints[selectedVP] = { x: (getEventLocation(e).x - cameraOffset.x) / cameraZoom, y: (getEventLocation(e).y - cameraOffset.y) / cameraZoom };
-        if (vanishingPoints.length > 1)
-          createHorizonLine();
-      }
-    }
-    else {
-      if (selectedVP == 3) //horizon line
-      {
-        moveX = (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom;
-        vanishingPoints[0].y = (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom;
-        vanishingPoints[1].y = (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom;
-        createHorizonLine();
-      }
-      else {
-        vanishingPoints[selectedVP] = { x: (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom, y: (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom };
-        if (vanishingPoints.length > 1)
-          createHorizonLine();
-      }
-    }
-
-    return;
-  }
-  else if (vanishingPoints.length == 3 && (e.button == 0 || touches == 1)) { //trying to create a new VP
-    alert("¡Ya tienes 3 puntos de fuga!!!");
-    return;
-  }
-  else if (isDrawing && dottedLine != undefined) //still drawing but the pointer was realeased outside canvas
-  {
-    //don't do anything...
-  }
-  //Drawing
-  else if (e.button == 0) {
-    isDrawing = true;
-    mouseWorldPos = toWorld(getEventLocation(e).x, getEventLocation(e).y);
-    x = mouseWorldPos.x;
-    y = mouseWorldPos.y;
-
-  }
-  else if (touches == 1) { //one finger
-
-    isDrawing = true;
-
-    mouseWorldPos = toWorld(getEventLocation(e).x - offsetX, getEventLocation(e).y - offsetY);
-    x = mouseWorldPos.x;
-    y = mouseWorldPos.y;
-  }
-  else { //Dragging with three fingers or right/middle click
-    isDragging = true;
-    if (touches == 0) {
-      dragStart.x = getEventLocation(e).x / cameraZoom - cameraOffset.x;
-      dragStart.y = getEventLocation(e).y / cameraZoom - cameraOffset.y;
-    }
-    else {
-      dragStart.x = (e.changedTouches[0].clientX - offsetX) / cameraZoom - cameraOffset.x;
-      dragStart.y = (e.changedTouches[0].clientY - offsetY) / cameraZoom - cameraOffset.y;
-    }
-  }
-}
-
-function onPointerMove(e) {
-  if (isMoving) {
-    if (e.button == 0) {
-      if (selectedVP == 3) //horizon line
-      {
-        const offset = (getEventLocation(e).x - cameraOffset.x) / cameraZoom - moveX;
-
-        vanishingPoints[0].x += offset;
-        vanishingPoints[1].x += offset;
-
-        moveX = (getEventLocation(e).x - cameraOffset.x) / cameraZoom;
-
-        vanishingPoints[0].y = (getEventLocation(e).y - cameraOffset.y) / cameraZoom;
-        vanishingPoints[1].y = (getEventLocation(e).y - cameraOffset.y) / cameraZoom;
-        createHorizonLine();
-      }
-      else {
-        vanishingPoints[selectedVP] = { x: (getEventLocation(e).x - cameraOffset.x) / cameraZoom, y: (getEventLocation(e).y - cameraOffset.y) / cameraZoom };
-        if (vanishingPoints.length > 1)
-          createHorizonLine();
-      }
-    }
-    else {
-      if (selectedVP == 3) //horizon line
-      {
-        const offset = (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom - moveX;
-
-        vanishingPoints[0].x += offset;
-        vanishingPoints[1].x += offset;
-
-        moveX = (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom;
-
-        vanishingPoints[1].y = (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom;
-        vanishingPoints[0].y = (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom;
-        createHorizonLine();
-      }
-      else {
-        vanishingPoints[selectedVP] = { x: (getEventLocation(e).x - offsetX - cameraOffset.x) / cameraZoom, y: (getEventLocation(e).y - offsetY - cameraOffset.y) / cameraZoom };
-        if (vanishingPoints.length > 1)
-          createHorizonLine();
-      }
-    }
-  }
-  else if (isDrawing) {
-    if (e.button == 0) {
-      mouseWorldPos = toWorld(getEventLocation(e).x, getEventLocation(e).y);
-      dottedLine = { x1: x, y1: y, x2: mouseWorldPos.x, y2: mouseWorldPos.y };
-    }
-    else {
-      mouseWorldPos = toWorld(getEventLocation(e).x - offsetX, getEventLocation(e).y - offsetY);
-      dottedLine = { x1: x, y1: y, x2: mouseWorldPos.x, y2: mouseWorldPos.y };
-    }
-
-    switch (state) {
-      case STATE.Init:
-        state = STATE.FirstDottedLine;
-        break;
-      case STATE.FirstLine:
-        state = STATE.SecondDottedLine;
-        break;
-      case STATE.SecondLine: //repaint second line
-        state = STATE.SecondDottedLine;
-        break;
-      case STATE.VP:
-        state = STATE.FirstDottedLine;
-        break;
-    }
-  }
-  else if (isDragging) {
-    if (touches == 0) {
-      cameraOffset.x = getEventLocation(e).x / cameraZoom - dragStart.x;
-      cameraOffset.y = getEventLocation(e).y / cameraZoom - dragStart.y;
-
-      cameraOffset.x = Math.min(cameraOffset.x, canvas.width);
-      cameraOffset.x = Math.max(cameraOffset.x, 0);
-
-      cameraOffset.y = Math.min(cameraOffset.y, canvas.height);
-      cameraOffset.y = Math.max(cameraOffset.y, 0);
-    }
-    else {
-      cameraOffset.x = (e.changedTouches[0].clientX - offsetX) / cameraZoom - dragStart.x;
-      cameraOffset.y = (e.changedTouches[0].clientY - offsetY) / cameraZoom - dragStart.y;
-    }
-  }
-}
-
-function onPointerUp(e) {
-  if (isMoving) {
-    isMoving = false;
-    if (vanishingPoints.length > 1)
-      createHorizonLine();
-    if (selectedVP == 3) //horizon line
-      saveAction({ n: "MoveHorizon", p1: { x: vanishingPoints[0].x, y: vanishingPoints[0].y }, p2: { x: vanishingPoints[1].x, y: vanishingPoints[1].y } });
-    else
-      saveAction({ n: "MoveVP", p1: { x: vanishingPoints[selectedVP].x, y: vanishingPoints[selectedVP].y }, p2: selectedVP });
-  }
-  else if (isDrawing) {
-    if (e.button == 0) {
-      mouseWorldPos = toWorld(getEventLocation(e).x, getEventLocation(e).y);
-      onLineFinished({ x1: x, y1: y, x2: mouseWorldPos.x, y2: mouseWorldPos.y });
-    }
-    else {
-      mouseWorldPos = toWorld(getEventLocation(e).x - offsetX, getEventLocation(e).y - offsetY);
-      onLineFinished({ x1: x, y1: y, x2: mouseWorldPos.x, y2: mouseWorldPos.y });
-    }
-  }
-  else if (isDragging) {
-    isDragging = false;
-  }
-}
-
-function onPointerLeave(e) {
-  isDragging = false;
-  isMoving = false;
-}
-
-function onLineFinished(line) {
+/********************************
+ ***     VANISHING POINT       ***
+ ********************************/
+/**
+ * Create the line
+ */
+function createLine(line) {
   //Make the line bigger
   const dx = line.x2 - line.x1;
   const dy = line.y2 - line.y1;
@@ -570,8 +712,6 @@ function onLineFinished(line) {
   switch (state) {
     case STATE.FirstDottedLine:
       firstLine = { x1: x1, y1: y1, x2: x2, y2: y2 };
-
-      createVPButton.disabled = true;
       saveAction({ n: "FirstLine", s: STATE.Init, p1: { x1: x1, y1: y1, x2: x2, y2: y2 } });
       state = STATE.FirstLine;
       break;
@@ -579,7 +719,6 @@ function onLineFinished(line) {
       secondLine = { x1: x1, y1: y1, x2: x2, y2: y2 };
       saveAction({ n: "SecondLine", s: STATE.FirstLine, p1: { x1: x1, y1: y1, x2: x2, y2: y2 } });
       state = STATE.SecondLine;
-      createVPButton.disabled = false;
       break;
   }
 
@@ -587,95 +726,34 @@ function onLineFinished(line) {
   y = 0;
   isDrawing = false;
   dottedLine = undefined;
+
+  updateVPButtons();
 }
 
-function handlePinchPan(e) {
-  if (pinchPan == 0) {
-    let t1 = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-    let t2 = { x: e.changedTouches[1].clientX, y: e.changedTouches[1].clientY };
-    let currentDistance = Math.sqrt((t1.x - t2.x) ** 2 + (t1.y - t2.y) ** 2);
-
-    if (e.type == "touchstart") {
-      previousDistance = currentDistance;
-    }
-    else {
-      previousDistance = currentDistance;
-      if (initialPinchDistance == null) {
-        initialPinchDistance = currentDistance;
-      }
-      else {
-        adjustZoom(null, currentDistance / initialPinchDistance);
-      }
-    }
-  }
-  else {
-    if (e.type == "touchstart") {
-      dragStart.x = e.changedTouches[1].clientX - offsetX - cameraOffset.x;
-      dragStart.y = e.changedTouches[1].clientY - offsetY - cameraOffset.y;
-    }
-    else {
-      cameraOffset.x = e.changedTouches[1].clientX - offsetX - dragStart.x;
-      cameraOffset.y = e.changedTouches[1].clientY - offsetY - dragStart.y;
-    }
-  }
-
-}
-
-function adjustZoom(zoomAmount, zoomFactor) {
-  if (!isDragging) {
-    if (zoomAmount) {
-      cameraZoom += zoomAmount;
-    }
-    else if (zoomFactor) {
-      cameraZoom = zoomFactor * lastZoom;
-    }
-
-    cameraZoom = Math.min(cameraZoom, MAX_ZOOM);
-    cameraZoom = Math.max(cameraZoom, MIN_ZOOM);
-  }
-}
-
-// Gets the relevant location from a mouse or single touch event
-function getEventLocation(e) {
-  if (e.changedTouches && e.changedTouches.length == 1) {
-    return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-  }
-  else if (e.clientX && e.clientY) {
-    return { x: e.offsetX, y: e.offsetY };
-  }
-}
-
+/**
+ * Create a vanishing point at the intersection of two lines.
+ */
 function createVP() {
   const vp = intersect();
-  if (vp != false) { //aqui crear el punto y las lineas radiantes
+  if (vp != false) { //create the vp and the radiating lines
     vanishingPoints.push(vp);
     saveAction({ n: "VP", s: STATE.SecondLine, p1: { x: vp.x, y: vp.y }, p2: vanishingPoints.length - 1 });
 
     state = STATE.VP;
 
-    switch (vanishingPoints.length) {
-      case 1:
-        vp1Button.hidden = false;
-        downloadButton.disabled = false;
-        break;
-      case 2:
-        vp2Button.hidden = false;
-        horizonButton.hidden = false;
-        createHorizonLine();
-        break;
-      case 3:
-        vp3Button.hidden = false;
-        break;
-    }
-    createVPButton.disabled = true;
+    if (vanishingPoints.length > 1) createHorizonLine();
   }
   else {
-    alert("¡Las lineas dibujadas no crean un punto de intersección!")
+    alert(translation('noIntersectionAlert'));
   }
 
+  updateVPButtons();
   manageVPButtons(-1);
 }
 
+/**
+ * Create the horizon line between two vanishing points.
+ */
 function createHorizonLine() {
   const dx = vanishingPoints[1].x - vanishingPoints[0].x;
   const dy = vanishingPoints[1].y - vanishingPoints[0].y;
@@ -688,8 +766,10 @@ function createHorizonLine() {
   horizonLine = { x1, y1, x2, y2 };
 }
 
-// Determine the intersection point of two line segments
-// Return FALSE if the lines don't intersect
+/**
+ * Determine the intersection point of two line segments.
+ * Return FALSE if the lines don't intersect.
+ */
 function intersect() {
   const x1 = firstLine.x1
   const y1 = firstLine.y1
@@ -727,56 +807,9 @@ function intersect() {
   return { x, y };
 }
 
-function loadBGImage(e) {
-  const tgt = e.target;
-  const files = tgt.files;
-
-  // FileReader support
-  if (FileReader && files && files.length) {
-    const fr = new FileReader();
-    fr.onload = () => showImage(fr);
-    fr.readAsDataURL(files[0]);
-  }
-};
-
-function showImage(fileReader) {
-  bgImage = new Image();
-  bgImage.src = fileReader.result;
-
-  bgImage.onload = function () {
-    bgImageHistory.push(bgImage);
-    saveAction({ n: "BgImage", p1: bgImageHistory.length - 1 });
-  };
-}
-
-function downloadGrid(e) {
-  download_canvas.width = 2048;
-  download_canvas.height = 2048 * canvas.height / canvas.width;
-  download_canvas.getContext('2d').drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, download_canvas.width, download_canvas.height);
-
-  const image = download_canvas.toDataURL("image/png");
-  link.href = image;
-  link.download = "grid";
-  link.click();
-};
-
-function deleteScene(save = true) {
-  if (save)
-    saveAction({ n: "DeleteAll", s: state, p1: dottedLine, p2: firstLine, p3: secondLine, p4: horizonLine, p5: vanishingPoints, p6: bgImage });
-
-  bgImage = undefined;
-
-  dottedLine = undefined;
-  firstLine = undefined;
-  secondLine = undefined;
-  horizonLine = undefined;
-  vanishingPoints = [];
-
-  resetButtons();
-
-  state = STATE.Init;
-};
-
+/**
+ * Manage the visibility of vanishing point buttons.
+ */
 function manageVPButtons(button) {
   vp1Image.src = "./images/1.png";
   vp2Image.src = "./images/2.png";
@@ -790,7 +823,7 @@ function manageVPButtons(button) {
         selectedVP = -1;
       }
       else {
-        if (colorOp == 1)
+        if (settings.colors === "pyb")
           vp1Image.src = "./images/1_selected.png";
         else
           vp1Image.src = "./images/1_selected2.png";
@@ -803,7 +836,7 @@ function manageVPButtons(button) {
         selectedVP = -1;
       }
       else {
-        if (colorOp == 1)
+        if (settings.colors === "pyb")
           vp2Image.src = "./images/2_selected.png";
         else
           vp2Image.src = "./images/2_selected2.png";
@@ -848,6 +881,21 @@ function manageVPButtons(button) {
   }
 }
 
+/**
+ * Update the visibility of vanishing point buttons and the state of the download button.
+ */
+function updateVPButtons() {
+  vp1Button.hidden = vanishingPoints.length < 1;
+  vp2Button.hidden = vanishingPoints.length < 2;
+  vp3Button.hidden = vanishingPoints.length < 3;
+  horizonButton.hidden = vanishingPoints.length < 2;
+  downloadButton.disabled = vanishingPoints.length < 1;
+  createVPButton.disabled = state !== STATE.SecondLine || vanishingPoints.length >= 3;
+}
+
+/**
+ * Align the horizon line.
+ */
 function alignHorizon(save = true) {
   if (save)
     saveAction({ n: "Horizon", p1: vanishingPoints[0].y, p2: vanishingPoints[1].y });
@@ -857,8 +905,11 @@ function alignHorizon(save = true) {
   createHorizonLine();
 }
 
+/**
+ * Increase the number of radial lines for the selected vanishing point.
+ */
 function more(save = true) {
-  if (radialLines[selectedVP] >= 270)
+  if (radialLines[selectedVP] >= maxRadialLines)
     return;
   if (save)
     saveAction({ n: "More", p1: selectedVP });
@@ -871,8 +922,11 @@ function more(save = true) {
   }, 200); // <-- time in milliseconds
 }
 
+/**
+ * Decrease the number of radial lines for the selected vanishing point.
+ */
 function less(save = true) {
-  if (radialLines[selectedVP] <= 8)
+  if (radialLines[selectedVP] <= minRadialLines)
     return;
   if (save)
     saveAction({ n: "Less", p1: selectedVP });
@@ -885,80 +939,88 @@ function less(save = true) {
   }, 200); // <-- time in milliseconds
 }
 
-function fadeOut(target) {
-  var fadeEffect = setInterval(function () {
-    if (!target.style.opacity) {
-      target.style.opacity = 1;
-    }
-    if (target.style.opacity > 0) {
-      target.style.opacity -= 0.1;
-    } else {
-      clearInterval(fadeEffect);
-    }
-  }, 100);
-}
-
-
+/**
+ * Delete the selected vanishing point.
+ */
 function deleteVP(save = true) {
   if (save)
     saveAction({ n: "DeleteVP", s: STATE.VP, p1: vanishingPoints[selectedVP], p2: selectedVP });
 
   vanishingPoints.splice(selectedVP, 1);
-  switch (vanishingPoints.length) {
-    case 2:
-      vp3Button.hidden = true;
-      break;
-    case 1:
-      vp2Button.hidden = true;
-      horizonButton.hidden = true;
-      horizonLine = undefined;
-      break;
-    case 0:
-      vp1Button.hidden = true;
-      downloadButton.disabled = true;
-      break;
-  }
+  updateVPButtons();
   manageVPButtons(selectedVP); //and hide
 }
 
-document.addEventListener("DOMContentLoaded", init);
+/********************************
+***      SCENE MANAGEMENT     ***
+********************************/
+/**
+ * Load the background image.
+ */
+function loadBGImage(e) {
+  const tgt = e.target;
+  const files = tgt.files;
 
-function createMatrix(x, y, scale, rotate) {
-  const m = matrix; // just to make it easier to type and read
-  const im = invMatrix; // just to make it easier to type and read
-  // create the scale and rotation part of the matrix
-  m[3] = m[0] = Math.cos(rotate) * scale;
-  m[2] = -(m[1] = Math.sin(rotate) * scale);
-  // translation
-  m[4] = x;
-  m[5] = y;
-
-  // calculate the inverse transformation
-  // first get the cross product of x axis and y axis
-  const cross = m[0] * m[3] - m[1] * m[2];
-  // now get the inverted axies
-  im[0] = m[3] / cross;
-  im[1] = -m[1] / cross;
-  im[2] = -m[2] / cross;
-  im[3] = m[0] / cross;
-}
-
-// function to transform to world space
-function toWorld(x, y) {
-  let xx, yy, m;
-  m = invMatrix;
-  xx = x - matrix[4];
-  yy = y - matrix[5];
-  return {
-    x: xx * m[0] + yy * m[2],
-    y: xx * m[1] + yy * m[3]
+  // FileReader support
+  if (FileReader && files && files.length) {
+    const fr = new FileReader();
+    fr.onload = () => showImage(fr);
+    fr.readAsDataURL(files[0]);
   }
+};
+
+/**
+ * Show the loaded background image.
+ */
+function showImage(fileReader) {
+  bgImage = new Image();
+  bgImage.src = fileReader.result;
+
+  bgImage.onload = function () {
+    bgImageHistory.push(bgImage);
+    saveAction({ n: "BgImage", p1: bgImageHistory.length - 1 });
+  };
 }
 
+/**
+ * Download the grid image.
+ */
+function downloadGrid(e) {
+  download_canvas.width = 2048;
+  download_canvas.height = 2048 * canvas.height / canvas.width;
+  download_canvas.getContext('2d').drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, download_canvas.width, download_canvas.height);
 
-let previousActions = [];
-let nextActions = [];
+  const image = download_canvas.toDataURL("image/png");
+  link.href = image;
+  link.download = "grid";
+  link.click();
+};
 
+/**
+ * Delete the current scene.
+ */
+function deleteScene(save = true) {
+  if (save)
+    saveAction({ n: "DeleteAll", s: state, p1: dottedLine, p2: firstLine, p3: secondLine, p4: horizonLine, p5: vanishingPoints, p6: bgImage });
+
+  bgImage = undefined;
+
+  dottedLine = undefined;
+  firstLine = undefined;
+  secondLine = undefined;
+  horizonLine = undefined;
+  vanishingPoints = [];
+
+  resetButtons();
+
+  state = STATE.Init;
+};
+/********************************
+***        UNDO/REDO          ***
+********************************/
+/**
+ * Save an action to the history stack.
+ */
 function saveAction(action) {
   previousActions.push(action);
   nextActions = [];
@@ -967,11 +1029,15 @@ function saveAction(action) {
   redoButton.disabled = true;
 }
 
+/**
+ * Undo the last action.
+ */
 function undo() {
   const action = previousActions.pop();
   nextActions.push(action);
   let prev; //going back on the history
 
+  console.log(action.n);
   switch (action.n) {
     case "FirstLine": //delete first line
       firstLine = { x, y };
@@ -989,7 +1055,6 @@ function undo() {
         secondLine = { x, y };
         state = action.s;
       }
-      downloadButton.disabled = true;
       break;
     case "VP": //delete VP and show first and second lines
       selectedVP = vanishingPoints.length - 1;
@@ -1007,7 +1072,6 @@ function undo() {
         prev = previousActions[previousActions.length - i];
       }
       firstLine = prev.p1;
-      createVPButton.disabled = false;
       break;
     case "DeleteVP": //redo VP
       if (action.p2 == vanishingPoints.length)
@@ -1016,21 +1080,8 @@ function undo() {
         vanishingPoints.splice(action.p2, 0, action.p1);
       state = STATE.VP;
 
-      switch (vanishingPoints.length) {
-        case 1:
-          vp1Button.hidden = false;
-          downloadButton.disabled = false;
-          break;
-        case 2:
-          vp2Button.hidden = false;
-          horizonButton.hidden = false;
-          createHorizonLine();
-          break;
-        case 3:
-          vp3Button.hidden = false;
-          break;
-      }
-      createVPButton.disabled = true;
+      if (vanishingPoints.length > 1) createHorizonLine();
+
       break;
     case "DeleteAll": //redo eveeeerything :)
       state = action.s;
@@ -1040,29 +1091,7 @@ function undo() {
       horizonLine = action.p4;
       vanishingPoints = action.p5;
       bgImage = action.p6;
-      switch (vanishingPoints.length) {
-        case 0:
-          if (firstLine != undefined && secondLine != undefined)
-            createVPButton.disabled = false;
-          break;
-        case 1:
-          vp1Button.hidden = false;
-          downloadButton.disabled = false;
-          break;
-        case 2:
-          vp1Button.hidden = false;
-          vp2Button.hidden = false;
-          horizonButton.hidden = false;
-          createHorizonLine();
-          break;
-        case 3:
-          vp1Button.hidden = false;
-          vp2Button.hidden = false;
-          vp3Button.hidden = false;
-          horizonButton.hidden = false;
-          createHorizonLine();
-          break;
-      }
+      if (vanishingPoints.length > 1) createHorizonLine();
       break;
     case "BgImage": //Remove image (see if there are previous ones)
       if (action.p1 == 0) //it's first image --> remove it
@@ -1091,8 +1120,7 @@ function undo() {
         prev = previousActions.pop();
         nextActions.push(prev);
         vanishingPoints[prev.p2] = { x: prev.p1.x, y: prev.p1.y };
-        if (vanishingPoints.length > 1)
-          createHorizonLine();
+        if (vanishingPoints.length > 1) createHorizonLine();
       }
       break;
     case "More":
@@ -1105,12 +1133,17 @@ function undo() {
       break;
   }
 
+  updateVPButtons();
+
   if (previousActions.length == 0)
     undoButton.disabled = true;
   if (redoButton.disabled)
     redoButton.disabled = false;
 }
 
+/**
+ * Redo the last undone action.
+ */
 function redo() {
   const action = nextActions.pop();
   previousActions.push(action);
@@ -1124,7 +1157,6 @@ function redo() {
     case "SecondLine": //redo second line
       secondLine = action.p1;
       state = STATE.SecondLine;
-      createVPButton.disabled = false;
       break;
     case "VP": //redo VP
       if (action.p2 == vanishingPoints.length)
@@ -1133,21 +1165,7 @@ function redo() {
         vanishingPoints.splice(action.p2, 0, action.p1);
       state = STATE.VP;
 
-      switch (vanishingPoints.length) {
-        case 1:
-          vp1Button.hidden = false;
-          downloadButton.disabled = false;
-          break;
-        case 2:
-          vp2Button.hidden = false;
-          horizonButton.hidden = false;
-          createHorizonLine();
-          break;
-        case 3:
-          vp3Button.hidden = false;
-          break;
-      }
-      createVPButton.disabled = true;
+      if (vanishingPoints > 1) createHorizonLine();
       break;
     case "DeleteVP": //delete VP
       selectedVP = vanishingPoints.length - 1;
@@ -1194,50 +1212,131 @@ function redo() {
       break;
   }
 
+  updateVPButtons();
+
   if (nextActions.length == 0)
     redoButton.disabled = true;
   if (undoButton.disabled)
     undoButton.disabled = false;
 }
 
-function changeSettings(e) {
-  switch (e.target.value) {
-    case "left":
-      if (isMobile)
-        changeToolBarStyle(true, true);
-      else
-        changeToolBarStyle(false, true);
-      break;
-    case "right":
-      if (isMobile)
-        changeToolBarStyle(true, false);
-      else
-        changeToolBarStyle(false, false);
-      break;
-    case "colorful":
-      break;
-    case "neutral":
-      break;
-    case "ryb":
-      colorOp = 1;
-      colors = ["HotPink", "Gold", "RoyalBlue"];
-      break;
-    case "rgb":
-      colorOp = 2;
-      colors = ["Red", "Green", "Blue"];
-      break;
+/********************************
+ ***        UTILITIES         ***
+ ********************************/
+/**
+ * Get the relevant location from a mouse or single touch event.
+ */
+function getEventLocation(e) {
+  if (e.changedTouches && e.changedTouches.length == 1) {
+    return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
   }
-  manageVPButtons(-1);
+  else if (e.clientX && e.clientY) {
+    return { x: e.offsetX, y: e.offsetY };
+  }
 }
 
-function switchZoomPan(e) {
+/**
+ * Handle pinch and pan gestures.
+ */
+function handlePinchPan(e) {
   if (pinchPan == 0) {
-    moveScaleImg.src = "./images/pan.png";
-    pinchPan = 1;
+    let t1 = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    let t2 = { x: e.changedTouches[1].clientX, y: e.changedTouches[1].clientY };
+    let currentDistance = Math.sqrt((t1.x - t2.x) ** 2 + (t1.y - t2.y) ** 2);
+
+    if (e.type == "touchstart") {
+      previousDistance = currentDistance;
+    }
+    else {
+      previousDistance = currentDistance;
+      if (initialPinchDistance == null) {
+        initialPinchDistance = currentDistance;
+      }
+      else {
+        adjustZoom(null, currentDistance / initialPinchDistance);
+      }
+    }
   }
   else {
-    moveScaleImg.src = "./images/pinch.png";
-    pinchPan = 0;
+    if (e.type == "touchstart") {
+      dragStart.x = e.changedTouches[1].clientX - offsetX - cameraOffset.x;
+      dragStart.y = e.changedTouches[1].clientY - offsetY - cameraOffset.y;
+    }
+    else {
+      cameraOffset.x = e.changedTouches[1].clientX - offsetX - dragStart.x;
+      cameraOffset.y = e.changedTouches[1].clientY - offsetY - dragStart.y;
+    }
+  }
+
+}
+
+/**
+ * Adjust the zoom level.
+ */
+function adjustZoom(zoomAmount, zoomFactor) {
+  if (!isDragging) {
+    if (zoomAmount) {
+      cameraZoom += zoomAmount;
+    }
+    else if (zoomFactor) {
+      cameraZoom = zoomFactor * lastZoom;
+    }
+
+    cameraZoom = Math.min(cameraZoom, MAX_ZOOM);
+    cameraZoom = Math.max(cameraZoom, MIN_ZOOM);
   }
 }
 
+
+/**
+ * Create the transformation matrix.
+ */
+function createMatrix(x, y, scale, rotate) {
+  const m = matrix; // just to make it easier to type and read
+  const im = invMatrix; // just to make it easier to type and read
+  // create the scale and rotation part of the matrix
+  m[3] = m[0] = Math.cos(rotate) * scale;
+  m[2] = -(m[1] = Math.sin(rotate) * scale);
+  // translation
+  m[4] = x;
+  m[5] = y;
+
+  // calculate the inverse transformation
+  // first get the cross product of x axis and y axis
+  const cross = m[0] * m[3] - m[1] * m[2];
+  // now get the inverted axies
+  im[0] = m[3] / cross;
+  im[1] = -m[1] / cross;
+  im[2] = -m[2] / cross;
+  im[3] = m[0] / cross;
+}
+
+/**
+ * Transform screen coordinates to world coordinates.
+ */
+function toWorld(x, y) {
+  let xx, yy, m;
+  m = invMatrix;
+  xx = x - matrix[4];
+  yy = y - matrix[5];
+  return {
+    x: xx * m[0] + yy * m[2],
+    y: xx * m[1] + yy * m[3]
+  }
+}
+
+/**
+ * Fade out the message
+ */
+function fadeOut(target) {
+  var fadeEffect = setInterval(function () {
+    if (!target.style.opacity) {
+      target.style.opacity = 1;
+    }
+    if (target.style.opacity > 0) {
+      target.style.opacity -= 0.1;
+    } else {
+      clearInterval(fadeEffect);
+    }
+  }, 100);
+}
