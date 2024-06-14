@@ -105,6 +105,7 @@ let matrix = [1, 0, 0, 1, 0, 0];      // normal matrix
 let invMatrix = [1, 0, 0, 1];   // inverse matrix
 
 let timeStart;
+let previousDistance;
 
 let isMobile = false;
 let pinchPan = 0;
@@ -1244,12 +1245,9 @@ function handlePinchPan(e) {
     let t2 = { x: e.changedTouches[1].clientX, y: e.changedTouches[1].clientY };
     let currentDistance = Math.sqrt((t1.x - t2.x) ** 2 + (t1.y - t2.y) ** 2);
 
-    if (e.type == "touchstart") {
-      previousDistance = currentDistance;
-    }
-    else {
-      previousDistance = currentDistance;
-      if (initialPinchDistance == null) {
+    previousDistance = currentDistance;
+    if (e.type !== "touchstart") {
+      if (initialPinchDistance === null) {
         initialPinchDistance = currentDistance;
       }
       else {
