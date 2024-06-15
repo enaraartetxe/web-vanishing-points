@@ -1,10 +1,10 @@
-import { translation } from './helper.js'; // Import the translation function from helper.js
+import {changeToolBarStyle, translation } from './helper.js'; // Import the translation function from helper.js
 
 const canvas = document.getElementById("canvas");
-const bg_canvas = document.getElementById("bgCanvas");
+const bgCanvas = document.getElementById("bgCanvas");
 const context = canvas.getContext("2d");
-const bg_context = bg_canvas.getContext("2d");
-const download_canvas = document.createElement('canvas');
+const bgContext = bgCanvas.getContext("2d");
+const downloadCanvas = document.createElement('canvas');
 
 const canvasMoveScale = document.getElementById("canvasMoveScale");
 const moveScaleImg = document.getElementById("moveScaleImg");
@@ -39,13 +39,17 @@ const lessButton = document.getElementById("less");
 const alertWindow = document.getElementById("alert");
 const deleteVPButton = document.getElementById("deleteVP");
 
+const slider =  document.getElementById("slider");
+const sliderLabel = document.getElementById("sliderLabel");
+
 const maxRadialLines = 360;
 const minRadialLines = 8;
 
 const defaultSettings = {
   hand: 'left',
   iface: 'colorful',
-  colors: 'pyb'
+  colors: 'pyb',
+  transparency: '0'
 };
 
 const STATE = {
@@ -176,6 +180,7 @@ function setupEventListeners() {
   ifaceNeutral.addEventListener("change", changeSettings);
   colors1.addEventListener("change", changeSettings);
   colors2.addEventListener("change", changeSettings);
+  slider.addEventListener("input", changeBgImgTransparency);
 
   createVPButton.addEventListener("click", (e) => { createVP(); });
 
@@ -535,6 +540,8 @@ function updateSettingsButtons() {
   ifaceNeutral.checked = settings.iface === "neutral";
   colors1.checked = settings.colors === "pyb";
   colors2.checked = settings.colors === "rgb";
+  slider.value = settings.transparency * 100;
+  sliderLabel.innerHTML = `${slider.value}%`
 }
 
 /**
@@ -550,6 +557,7 @@ function saveSettings() {
 function showCustomizedInterface() {
   changeToolBarStyle(isMobile, settings.hand === "left");
   colors = settings.colors === "pyb" ? ["deeppink", "gold", "slateblue"] : ["limegreen", "blue", "orangered"];
+  canvas.style.backgroundColor = `rgba(255, 255, 255, ${settings.transparency}`;
 }
 
 /**
@@ -582,6 +590,18 @@ function changeSettings(e) {
 }
 
 /**
+ * Change image background transparency
+ */
+function changeBgImgTransparency(e)
+{
+  settings.transparency = e.target.value/100;
+  sliderLabel.innerHTML = `&emsp;${e.target.value}%`;
+  saveSettings();
+  showCustomizedInterface();
+  manageVPButtons(-1);
+}
+
+/**
  * Switch between zoom and pan modes.
  */
 function switchZoomPan(e) {
@@ -606,8 +626,8 @@ function draw() {
   canvas.width = window.innerWidth * aspectRatioWidth;
   canvas.height = window.innerHeight * asepctRatioHeight;
 
-  bg_canvas.width = window.innerWidth * aspectRatioWidth;
-  bg_canvas.height = window.innerHeight * asepctRatioHeight;
+  bgCanvas.width = window.innerWidth * aspectRatioWidth;
+  bgCanvas.height = window.innerHeight * asepctRatioHeight;
 
   const m = matrix;
   context.setTransform(1, 0, 0, 1, 0, 0);
@@ -615,9 +635,9 @@ function draw() {
   createMatrix(cameraOffset.x, cameraOffset.y, cameraZoom, 0);
   context.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
 
-  bg_context.setTransform(1, 0, 0, 1, 0, 0);
-  bg_context.clearRect(0, 0, bg_canvas.width, bg_canvas.height);
-  bg_context.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
+  bgContext.setTransform(1, 0, 0, 1, 0, 0);
+  bgContext.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+  bgContext.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
 
   offsetX = canvas.getBoundingClientRect().left;
   offsetY = canvas.getBoundingClientRect().top;
@@ -657,12 +677,12 @@ function draw() {
  * Draw the background image on the canvas (inside draw loop).
  */
 function drawBGImage() {
-  const hRatio = bg_canvas.width / bgImage.width;
-  const vRatio = bg_canvas.height / bgImage.height;
+  const hRatio = bgCanvas.width / bgImage.width;
+  const vRatio = bgCanvas.height / bgImage.height;
   const ratio = Math.min(hRatio, vRatio);
-  const centerX = (bg_canvas.width - bgImage.width * ratio) / 2;
-  const centerY = (bg_canvas.height - bgImage.height * ratio) / 2;
-  bg_context.drawImage(bgImage, -canvas.width / 2 + centerX, -canvas.height / 2 + centerY, bgImage.width * ratio, bgImage.height * ratio);
+  const centerX = (bgCanvas.width - bgImage.width * ratio) / 2;
+  const centerY = (bgCanvas.height - bgImage.height * ratio) / 2;
+  bgContext.drawImage(bgImage, -canvas.width / 2 + centerX, -canvas.height / 2 + centerY, bgImage.width * ratio, bgImage.height * ratio);
 }
 
 /**
@@ -990,11 +1010,11 @@ function showImage(fileReader) {
  * Download the grid image.
  */
 function downloadGrid(e) {
-  download_canvas.width = 2048;
-  download_canvas.height = 2048 * canvas.height / canvas.width;
-  download_canvas.getContext('2d').drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, download_canvas.width, download_canvas.height);
+  downloadCanvas.width = 2048;
+  downloadCanvas.height = 2048 * canvas.height / canvas.width;
+  downloadCanvas.getContext('2d').drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, downloadCanvas.width, downloadCanvas.height);
 
-  const image = download_canvas.toDataURL("image/png");
+  const image = downloadCanvas.toDataURL("image/png");
   link.href = image;
   link.download = "grid";
   link.click();

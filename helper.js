@@ -34,6 +34,14 @@ const translation = (key) => {
   return messages[lang][key];
 }
 
+const setCanvasStyle = (position, leftOffset, rightOffset) => {
+  canvas.style[position] = leftOffset;
+  bg_canvas.style[position] = leftOffset;
+  canvas.style[opposite(position)] = rightOffset;
+  bg_canvas.style[opposite(position)] = rightOffset;
+};
+
+const opposite = (position) => (position === 'left' ? 'right' : 'left');
 
 let landscape = window.matchMedia("(orientation: landscape)");
 
@@ -71,6 +79,7 @@ function setEnglishInfoSettings() {
   document.getElementById("check3").insertAdjacentHTML('afterbegin', "<b>- Lines:&emsp;</b>");
   document.getElementById("colors1Label").innerHTML = "Pink/Yellow/Blue";
   document.getElementById("colors2Label").innerHTML = "Red/Green/Blue";
+  document.getElementById("transparencySlider").insertAdjacentHTML('afterbegin',"<b>- Bg image transparency:&emsp;</b>");
   document.getElementById("settingsOkButton").innerHTML = "Done";
 
   //Info text changes on iPad/Computer
@@ -109,6 +118,7 @@ function setSpanishInfoSettings() {
   document.getElementById("check3").insertAdjacentHTML('afterbegin', "<b>- Líneas:&emsp;</b>");
   document.getElementById("colors1Label").innerHTML = "Rosa/Amarillo/Azul";
   document.getElementById("colors2Label").innerHTML = "Rojo/Verde/Azul";
+  document.getElementById("transparencySlider").insertAdjacentHTML('afterbegin',"<b>- Transparencia img fondo:&emsp;</b>");
   document.getElementById("settingsOkButton").innerHTML = "Hecho";
 
   //Info text changes on iPad/Computer
@@ -181,16 +191,7 @@ function setSpanishButtons() {
   deleteVP.innerHTML = "<img class=\"icon\" src=\"images/delete.png\" /><br>Borrar Punto de Fuga";
 }
 
-const setCanvasStyle = (position, leftOffset, rightOffset) => {
-  canvas.style[position] = leftOffset;
-  bg_canvas.style[position] = leftOffset;
-  canvas.style[opposite(position)] = rightOffset;
-  bg_canvas.style[opposite(position)] = rightOffset;
-};
-
-const opposite = (position) => (position === 'left' ? 'right' : 'left');
-
-window.changeToolBarStyle = function (isMobile, isLeft) {
+function changeToolBarStyle (isMobile, isLeft) {
   if (isMobile) { //check if tablet or phone
     if (isPhone) {
       setCanvasStyle(isLeft ? 'right' : 'left', "2vw", "auto");
@@ -226,4 +227,4 @@ landscape.addEventListener("change", function (e) {
 })
 
 // Export the translation function
-export { translation };
+export { changeToolBarStyle, translation };
